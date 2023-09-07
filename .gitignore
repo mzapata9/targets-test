@@ -4,3 +4,7 @@ build/
 *.log
 .DS_Store
 Thumbs.db
+
+# Ignore lib/ and fonts/ directories in all subdirectories under targets/
+targets/*/src/assets/lib/
+targets/*/src/assets/fonts/
