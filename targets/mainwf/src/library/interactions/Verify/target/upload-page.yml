@@ -1,0 +1,634 @@
+{%
+const documentTypes = attributes?.documentTypes?.length ? attributes?.documentTypes : ['PP', 'ID', 'DL', 'RP'];
+const documentCountries = Object.keys(constants.COUNTRIES).filter((countryCode) => ((attributes.whitelistCountries?.length) ? (attributes.whitelistCountries?.indexOf(countryCode) > -1) : true) && ((attributes.blacklistCountries?.length) ? (attributes.blacklistCountries?.indexOf(countryCode) === -1) : true));
+const showDocumentSwitch = documentTypes.length > 1 || documentCountries.length > 1;
+%}
+
+components:
+  layoutWithSidebar: !include ../layouts/with-sidebar.yml
+  imagePreview: !include ../components/image-preview.yml
+  acuantUpload: !include ../components/acuant-upload.yml
+styles:
+  - !include ../styles/upload-{%- attributes.uri %}-{%- token %}.less
+analytics:
+  form:
+    initialized:
+      eventName: "Opened"
+      data: { field: "Form" }
+  page:
+    enter:
+      eventName: "Viewed"
+      data: { field: "Page" }
+    leave:
+      eventName: "Completed"
+      data: { field: "Page" }
+  fields:
+    idCardFront:
+      click:
+        eventName: "Clicked"
+        data:
+          field: "Front ID"
+      change:
+        eventName: "Input"
+        data:
+          field: "Front ID"
+      accepted:
+        eventName: "Result"
+        data:
+          field: "Front ID"
+          result: "accepted"
+      rejected:
+        eventName: "Result"
+        data:
+          field: "Front ID"
+          result: "rejected"
+    idCardBack:
+      click:
+        eventName: "Clicked"
+        data:
+          field: "Back ID"
+      change:
+        eventName: "Input"
+        data:
+          field: "Back ID"
+      accepted:
+        eventName: "Result"
+        data:
+          field: "Back ID"
+          result: "accepted"
+      rejected:
+        eventName: "Result"
+        data:
+          field: "Back ID"
+          result: "rejected"
+{% if (attributes.selfieEnabled) { %}
+    selfie:
+      click:
+        eventName: "Clicked"
+        data:
+          field: "Selfie"
+      change:
+        eventName: "Input"
+        data:
+          field: "Selfie"
+      accepted:
+        eventName: "Result"
+        data:
+          field: "Selfie"
+          result: "accepted"
+      rejected:
+        eventName: "Result"
+        data:
+          field: "Selfie"
+          result: "rejected"
+{% } %}
+schema:
+  required:
+    - idCardFront
+{% if (attributes.selfieEnabled) { %}
+    - selfie
+{% } %}
+  properties:
+    idCardFront:
+      type: array
+      minItems: 1
+  errorMessage:
+    _: !expression |
+      (function() {
+        return t('errors.requiredField')
+      })()
+defaults:
+  idCardLabel: !expression |
+    {
+      ['PP']: t('pages.{%- attributes.uri %}.documentType.passport'),
+      ['ID']: t('pages.{%- attributes.uri %}.documentType.government-id'),
+      ['DL']: t('pages.{%- attributes.uri %}.documentType.drivers-license'),
+      ['RP']: t('pages.{%- attributes.uri %}.documentType.residence-permit')
+    }[flow.export.documentType]
+  handoffMobile: !expression "flow.export.mobile"
+locals:
+  handoffPage: true
+items:
+  # Creates documentInstanceId
+  - !component as: Trigger
+    load: !function |
+      flow.function.getAssureIdOAuthToken({assureIdRegion: globals.assureIdRegion, authType: "BEARER"})
+        .then((res) => {
+          if(!res.result.token || !res.result.url) {
+            console.error("Token or URL missing...")
+            return
+          }
+          globals.assureIdOAuthToken = res.result.token
+          page.storage.set("assureIdOAuthToken", res.result.token)
+          page.storage.set("assureIdOAuthUrl", res.result.url)
+          flow.function.createDocumentInstanceId({
+            assureIdRegion: globals.assureIdRegion,
+          })
+          .then((result) => {
+            page.storage.set("documentInstanceId", result.result.documentInstanceId)
+            globals.documentInstanceId = result.result.documentInstanceId
+            form.changeValue('documentInstanceId',  result.result.documentInstanceId);
+          })
+          .catch((err) => console.error("createDocumentInstanceId error: ", err))
+        }).catch((err) => console.error("getAssureIdOAuthToken error: ", err))
+  # Get recaptcha token
+  - !component as: Trigger
+    load: !function |
+      if(globals?.recaptcha?.recaptchaShowSms) {
+        form.addTags(['showSendSMS'])
+      }
+  # Change document type confirmation
+  - !component as: Modal
+    tag: changeDocumentTypeModal
+    className: switchDocumentConfirm
+    shouldCloseOnEscClick: true
+    shouldCloseOnOverlayClick: true
+    closeButton: true
+    items:
+      - !component as: Heading
+        items: !t 'pages.{%- attributes.uri %}.confirmChange.title'
+      - !component as: Paragraph
+        items: !t 'pages.{%- attributes.uri %}.confirmChange.text'
+      - !component as: Button
+        onClick: !function "form.removeTags(['changeDocumentTypeModal'])"
+        text: !t 'pages.{%- attributes.uri %}.confirmChange.reject'
+      - !component as: div
+        className: center
+        items:
+          - !component as: LinkButton
+            actionName: flowBack
+            notValidated: true
+            text: !t 'pages.{%- attributes.uri %}.confirmChange.continue'
+  # Layout
+  - !ref components: layoutWithSidebar
+    omitBackButton: true
+    items:
+      # upload
+      - !component as: VisibilityWrapper
+        visible: !expression "device.isMobile || form.hasTags(['handoffBypass'])"
+        items:
+          # document
+          - !component as: Heading
+            items: !expression "t('pages.{%- attributes.uri %}.documentTitle', { label: form.data.idCardLabel || 'Document' })"
+
+          # show only for handoff
+          - !component as: VisibilityWrapper
+            visible: !expression "(device.isMobile && !flow.export.isDesktop) || device.isDesktop"
+            items:
+              - !component as: div
+                className: "row"
+                items:
+                  - !component as: Icon
+                    kind: !expression |
+                      {
+                        ['PP']: 'doc-passport',
+                        ['ID']: 'doc-id',
+                        ['DL']: 'doc-license',
+                        ['RP']:  'doc-residence'
+                      }[flow?.export.documentType]
+                    size: 30
+                    className: documentIcon
+
+                  - !component as: div
+                    className: switchDocument
+                    items:
+                      - !component as: div
+                        className: switchDocument-name
+                        items:
+                          - !expression |
+                            {%- JSON.stringify(constants.COUNTRIES) %}[flow.export.documentCountry] || 'Country'
+                          - " / "
+                          - !expression |
+                            {
+                              ['PP']: t('pages.{%- attributes.uri %}.documentType.passport'),
+                              ['ID']: t('pages.{%- attributes.uri %}.documentType.government-id'),
+                              ['DL']: t('pages.{%- attributes.uri %}.documentType.drivers-license'),
+                              ['RP']: t('pages.{%- attributes.uri %}.documentType.residence-permit')
+                            }[flow.export.documentType] || 'Document'
+                      {% if (showDocumentSwitch) { %}
+                      - !component as: VisibilityWrapper
+                        visible: !expression "!flow?.export?.forcedDocumentType"
+                        items:
+                          - !component as: a
+                            className: CM-linkButton
+                            href: "#"
+                            onClick: !function "form.addTags(['changeDocumentTypeModal'])"
+                            items: !t 'pages.{%- attributes.uri %}.changeDocumentType'
+                      {% } %}
+
+          # div document instance ID 
+          - !component as: div
+            style:
+              display: 'none'
+            items:
+            - !component as: Input
+              name: documentInstanceId
+              label: "documentInstanceId"
+
+          # front
+          - !ref components: acuantUpload
+            assureIdRegion: {% if(globals?.assureIdRegion) { %}"{%- globals?.assureIdRegion %}"{% } else { %}"EU"{% } %}
+            name: idCardFront
+            type: document
+            side: pages.{%- attributes.uri %}.idCardFront.badge
+            prevalidationDisabled: !expression "page.storage.get('precheckFailed') || {%- attributes?.documentCaptureQuality === 'DISABLED' %}"
+            documentCustomGlare: !expression "{%- attributes?.documentCustomGlare %}"
+            documentCustomDpi: !expression "{%- attributes?.documentCustomDpi %}"
+            documentCustomBlur: !expression "{%- attributes?.documentCustomBlur %}"
+            documentCaptureQuality: {%- attributes?.documentCaptureQuality %}
+            documentUploadRetries: {%- attributes?.documentUploadRetries %}
+            status: !expression "page.storage.get('classificationStatus')"
+            onRejected: !function page.storage.set('precheckFailed', true);
+            prefix: {%- attributes.uri %}
+            onFinish: !function |
+              page.storage.set('precheckFailed', false);
+         
+              form.addTags(['waiting_classification']);
+              page.storage.set('classificationStatus', null);
+              let isWaiting = true;
+
+              clearTimeout(page.storage.get('classification_timeout'))
+              page.storage.set('classification_timeout', setTimeout(() => {
+                try {
+                  if (!isWaiting || !form.data.idCardFront) {
+                    return;
+                  }
+                  // was timeout
+                  isWaiting = false;
+                  form.removeTags(['waiting_classification']);
+                  page.storage.set('classificationStatus', 'ok');
+                  flow.function.setClassification({status: 'ok'});
+                } catch(e) {}
+              }, 20000));
+
+              page.storage.set('classificationStatus', 'pending');
+              flow.function.setClassification({status: 'pending'});
+
+              flow.function.uploadDocument({
+                  assureIdRegion: globals.assureIdRegion,
+                  documentInstanceId: page.storage.get("documentInstanceId"),
+                  file: file,
+                  side: 'front'
+                }).then((result) => {
+                  if (!isWaiting || !form.data.idCardFront) {
+                    return;
+                  }
+                  isWaiting = false;
+                  form.removeTags(['waiting_classification']);
+                  clearTimeout(page.storage.get('classification_timeout'))
+
+                  classNamesTable = utils.getDocumentTypesMap()
+
+                  const isUto = result?.result?.ClassificationDetails?.Front?.CountryCode === 'UTO';
+                  console.log('Document classification | country:', result?.result?.ClassificationDetails?.Front?.CountryCode, 'className:', result?.result?.ClassificationDetails?.Front?.ClassName);
+
+                  const country = constants.COUNTRIES_FULL.find(i => i.alpha3Code === result?.result?.ClassificationDetails?.Front?.CountryCode);
+                  const className = result?.result?.ClassificationDetails?.Front?.ClassName;
+                  if (isUto || country?.alpha2Code === flow?.export?.documentCountry) {
+                    // was success
+                    flow.function.setClassification({status: 'ok'});
+                    page.storage.set('classificationStatus', 'ok');
+                  } else {
+                    // error
+                      if (page.storage.get('classificationWasUsed')) {
+                      form.removeTags(['waiting_classification']);
+                      page.storage.set('classificationStatus', 'ok');
+                      flow.function.setClassification({status: 'ok'});
+                    }else{
+                      flow.function.setClassification({status: 'fail'});
+                      page.storage.set('classificationStatus', 'fail');
+                      page.storage.set('idCardFrontError', null);
+                      form.changeValue('idCardFront', null);
+                      }
+                    page.storage.set('classificationWasUsed', true);
+                  }
+                }, () => {
+                  form.changeValue('documentInstanceId',  null);
+                  clearTimeout(page.storage.get('classification_timeout'))
+                  flow.function.setClassification({status: 'fail'});
+                  page.storage.set('classificationStatus', 'fail');
+                  page.storage.set('idCardFrontError', null);
+                  form.changeValue('idCardFront', null);
+                  form.removeTags(['waiting_classification']);
+                });
+            uri: {%- attributes.uri %}
+
+          # back
+          - !component as: VisibilityWrapper
+            visible: !expression |
+              (({%- JSON.stringify(attributes.idBackRequiredCountries) %} || []).includes(flow.export?.documentCountry) || {%- attributes.idBackRequiredAllCountries %}) && ['ID', 'DL'].includes(flow.export?.documentType)
+            items:
+            - !ref components: acuantUpload
+              assureIdRegion: {% if(globals?.assureIdRegion) { %}"{%- globals?.assureIdRegion %}"{% } else { %}"EU"{% } %}
+              name: idCardBack
+              type: document
+              side: pages.{%- attributes.uri %}.idCardBack.badge
+              prevalidationDisabled: !expression "page.storage.get('precheckFailedBack') || {%- attributes?.documentCaptureQuality === 'DISABLED' %}"
+              documentCustomGlare: !expression "{%- attributes?.documentCustomGlare %}"
+              documentCustomDpi: !expression "{%- attributes?.documentCustomDpi %}"
+              documentCustomBlur: !expression "{%- attributes?.documentCustomBlur %}"
+              documentCaptureQuality: {%- attributes?.documentCaptureQuality %}
+              documentUploadRetries: {%- attributes?.documentUploadRetries %}
+              status: !expression "page.storage.get('classificationStatusBack')"
+              onRejected: !function page.storage.set('precheckFailedBack', true);
+              prefix: {%- attributes.uri %}
+              onFinish: !function |
+                page.storage.set('precheckFailedBack', false);
+                form.addTags(['waiting_classification']);
+                page.storage.set('classificationStatusBack', null);
+                let isWaiting = true;
+
+                clearTimeout(page.storage.get('classification_timeout_back'))
+                page.storage.set('classification_timeout_back', setTimeout(() => {
+                  try {
+                    if (!isWaiting || !form.data.idCardBack) {
+                      return;
+                    }
+                    // was timeout
+                    isWaiting = false;
+                    form.removeTags(['waiting_classification']);
+                    page.storage.set('classificationStatusBack', 'ok');
+                    flow.function.setClassificationBack({status: 'ok'});
+                  } catch(e) {}
+                }, 20000));
+
+                page.storage.set('classificationStatusBack', 'pending');
+                flow.function.setClassificationBack({status: 'pending'});
+                flow.function.uploadDocument({
+                    assureIdRegion: globals.assureIdRegion,
+                    documentInstanceId: page.storage.get("documentInstanceId"),
+                    file: file,
+                    side: 'back'
+                  }).then((result) => {
+                    if (!isWaiting || !form.data.idCardBack) {
+                      return;
+                    }
+                    isWaiting = false;
+                    form.removeTags(['waiting_classification']);
+                    clearTimeout(page.storage.get('classification_timeout_back'))
+                    classNamesTable = utils.getDocumentTypesMap()
+                    const isUto = result?.result?.ClassificationDetails?.Back?.CountryCode === 'UTO';
+                    console.log('Document classification | country:', result?.result?.ClassificationDetails?.Back?.CountryCode, 'className:', result?.result?.ClassificationDetails?.Back?.ClassName);
+
+                    const country = constants.COUNTRIES_FULL.find(i => i.alpha3Code === result?.result?.ClassificationDetails?.Back?.CountryCode);
+                    const className = result?.result?.ClassificationDetails?.Back?.ClassName;
+                    if (isUto || country?.alpha2Code === flow?.export?.documentCountry) {
+                      // was success
+                       flow.function.setClassificationBack({status: 'ok'});
+                      page.storage.set('classificationStatusBack', 'ok');
+                    } else {
+                      // error
+                      if (page.storage.get('classificationWasUsedBack')) {
+                        form.removeTags(['waiting_classification']);
+                        page.storage.set('classificationStatusBack', 'ok');
+                         flow.function.setClassificationBack({status: 'ok'});
+                      }else{
+                            flow.function.setClassificationBack({status: 'fail'});
+                            page.storage.set('classificationStatusBack', 'fail');
+                            page.storage.set('idCardBackError', null);
+                            form.changeValue('idCardBack', null);
+                      }
+                page.storage.set('classificationWasUsedBack', true);                     
+                    }
+                  }, () => {
+                    form.changeValue('documentInstanceId',  null);
+                    clearTimeout(page.storage.get('classification_timeout_back'))
+                     flow.function.setClassificationBack({status: 'fail'});
+                    page.storage.set('classificationStatusBack', 'fail');
+                    page.storage.set('idCardBackError', null);
+                    form.changeValue('idCardBack', null);
+                    form.removeTags(['waiting_classification']);
+                    
+                  });
+              uri: {%- attributes.uri %}
+
+          # selfie
+          {% if (attributes.selfieEnabled) { %}
+          - !component as: hr
+
+          - !component as: Heading
+            items: !t "pages.{%- attributes.uri %}.selfieTitle"
+
+          - !ref components: acuantUpload
+            assureIdRegion: {% if(globals?.assureIdRegion) { %}"{%- globals?.assureIdRegion %}"{% } else { %}"EU"{% } %}
+            name: selfie
+            type: selfie
+            side: pages.{%- attributes.uri %}.selfie.badge
+            status: ok
+            disabled: !expression "!form.data.idCardFront || (!form.data.idCardBack && backRequired)"
+            prefix: {%- attributes.uri %}
+            uri: {%- attributes.uri %}
+            onFinish: !function |
+              flow.function.setClassificationSelfie({status: 'ok'});
+          {% } %}
+
+          # submit
+          - !component as: SubmitButton
+            actionName: flowSubmit
+            disabled: !expression |
+              (function() {
+                const backRequired = (({%- JSON.stringify(attributes.idBackRequiredCountries) %} || []).includes(flow.export?.documentCountry) || {%- attributes.idBackRequiredAllCountries %}) && ['ID', 'DL'].includes(flow.export?.documentType);
+                return form.hasTags(['waiting_classification']) || !form.data.idCardFront || {% if (attributes.selfieEnabled) { %}!form.data.selfie ||{% } %} (!form.data.idCardBack && backRequired);
+              })()
+            text: !t "common.continue"
+
+      # readonly
+      - !component as: VisibilityWrapper
+        visible: !expression "(!device.isMobile || (device.isDesktop && {%- !attributes?.manualUploadDisabled %})) && !form.hasTags(['handoffBypass'])"
+        items:
+          - !component as: Interval
+            tick: !function "if (flow.namespace.results?.handoff?.previews?.['{%- attributes.uri %}' + 'idCardBack']) {form.removeTags(['handoffOpenModal'])}"
+            interval: 2000
+
+          # document
+          - !component as: Heading
+            items: !expression "t('pages.{%- attributes.uri %}.documentTitle', { label: form.data.idCardLabel })"
+
+          # show document type
+          - !component as: div
+            className: "row"
+            items:
+              - !component as: Icon
+                kind: !expression |
+                  {
+                    ['PP']: 'doc-passport',
+                    ['ID']: 'doc-id',
+                    ['DL']: 'doc-license',
+                    ['RP']:  'doc-residence'
+                  }[flow?.export.documentType]
+                size: 40
+                className: documentIcon
+              - !component as: div
+                className: switchDocument
+                items:
+                  - !component as: div
+                    className: switchDocument-name
+                    items:
+                      - !expression |
+                          {%- JSON.stringify(constants.COUNTRIES) %}[flow.export.documentCountry]
+                      - " / "
+                      - !expression |
+                        {
+                          ['PP']: t('pages.{%- attributes.uri %}.documentType.passport'),
+                          ['ID']: t('pages.{%- attributes.uri %}.documentType.government-id'),
+                          ['DL']: t('pages.{%- attributes.uri %}.documentType.drivers-license'),
+                          ['RP']: t('pages.{%- attributes.uri %}.documentType.residence-permit')
+                        }[flow.export.documentType]
+                  {% if (showDocumentSwitch) { %}
+                  - !component as: VisibilityWrapper
+                    visible: !expression "!flow?.export?.forcedDocumentType"
+                    items:
+                      - !component as: a
+                        className: CM-linkButton
+                        href: "#"
+                        onClick: !function "form.addTags(['changeDocumentTypeModal'])"
+                        items:
+                          - !t 'pages.{%- attributes.uri %}.changeDocumentType'
+                  {% } %}
+
+          # front
+          - !ref components: imagePreview
+            type: id
+            side: pages.{%- attributes.uri %}.idCardFront.badge
+            name: idCardFront
+            status: !expression "flow.namespace.results?.handoff?.classificationStatus || 'waiting'"
+            uuid: !expression "flow.namespace.results?.handoff?.previews?.['{%- attributes.uri %}' + 'idCardFront']?.uuid"
+            uri: {%- attributes.uri %}
+
+          # back
+          - !component as: VisibilityWrapper
+            visible: !expression |
+              (({%- JSON.stringify(attributes.idBackRequiredCountries) %} || []).includes(flow.export?.documentCountry) || {%- attributes.idBackRequiredAllCountries %}) && ['ID', 'DL'].includes(flow.export?.documentType)
+            items:
+            - !ref components: imagePreview
+              type: id
+              side: pages.{%- attributes.uri %}.idCardBack.badge
+              name: idCardBack
+              status: !expression "flow.namespace.results?.handoff?.classificationStatusBack || 'waiting'"
+              uuid: !expression "flow.namespace.results?.handoff?.previews?.['{%- attributes.uri %}' + 'idCardBack']?.uuid"
+              uri: {%- attributes.uri %}
+
+          # selfie
+          {% if (attributes.selfieEnabled) { %}
+          - !component as: hr
+
+          - !component as: Heading
+            items: !t "pages.{%- attributes.uri %}.selfieTitle"
+
+          - !ref components: imagePreview
+            uri: {%- attributes.uri %}
+            type: selfie
+            name: selfie
+            side: pages.{%- attributes.uri %}.selfie.badge
+            status: !expression "flow.namespace.results?.handoff?.classificationStatusSelfie || 'waiting'"
+            uuid: !expression "flow.namespace.results?.handoff?.previews?.['{%- attributes.uri %}' + 'selfie']?.uuid"
+          {% } %}
+
+          # submit
+          - !component as: Button
+            disabled: true
+            text: !t "common.continue"
+  # modal with qr code
+  - !component as: Trigger
+    load: !function |
+      page.storage.set('numberOfSmsTries{%- attributes.uri %}', {%-attributes.smsRepeatTries + 1%});
+  - !component as: VisibilityWrapper
+    visible: !expression "locals?.handoffPage && device.isDesktop && !form.hasTags(['handoffBypass'])"
+    items:
+      - !component as: Modal
+        tag: handoffOpenModal
+        closeButton: false
+        className: handoffOpenModal
+        items:
+          - !component as: Heading
+            items: !expression |
+              {
+                ['PP']: t('pages.{%- attributes.uri %}.documentType.title.passport'),
+                ['ID']: t('pages.{%- attributes.uri %}.documentType.title.government-id'),
+                ['DL']: t('pages.{%- attributes.uri %}.documentType.title.drivers-license'),
+                ['RP']: t('pages.{%- attributes.uri %}.documentType.title.residence-permit')
+              }[flow.export.documentType]
+          - !component as: Paragraph
+            items: !t "pages.{%- attributes.uri %}.handoff.openText"
+          - !component as: div
+            className: row
+            items:
+              - !component as: VisibilityWrapper
+                visible: !expression "{%- globals?.general.enableSmsHandoff %} && form.hasTags(['showSendSMS'])"  
+                items:
+                  - !component as: div
+                    className: {%- globals?.general.enableSmsHandoff ? 'col' : 'col col-centered' %}
+                    items:
+                      - !component as: Heading
+                        items: !t "pages.{%- attributes.uri %}.handoff.sendSms"
+                        kind: "h2"
+                      - !component as: PhoneInput
+                        name: handoffMobile
+                        country: !expression "flow.export?.country ? flow.export?.country : window.COUNTRY"
+                        delimiter: "-"
+                        tidy: "phoneNumber"
+                        validateFormat: true
+                        formatErrorText: !t "pages.{%- attributes.uri %}.handoff.invalidMobile"
+                      - !component as: DelayedRepeatButton
+                        initialTime: {%- attributes?.smsRepeatTime ? attributes?.smsRepeatTime : 30 %}
+                        loading: !expression "app.waiting.sendHandoffSms"
+                        onClick: !function |
+                          if (app.waiting.sendHandoffSms || !form.field.handoffMobile.isValid) {
+                            return;
+                          }
+                          try {
+                            grecaptcha.enterprise.ready(function() {
+                              grecaptcha.enterprise.execute(globals.recaptchaSiteKey, {action: 'submit'}).then((token) => {
+                                (async function() {
+                                  try {
+                                    const smsResult = await flow.function.sendHandoffSms({ language: app.locale, mobile: form.data.handoffMobile, token: flow.execution.token, recaptchaToken: token });
+                                    analytics.event('Sent', { field: 'SMS' });
+
+                                    // set this value depending on result of function
+                                    page.storage.set('numberOfSmsTries{%- attributes.uri %}',smsResult.result);
+                                  } catch(e) {
+                                    console.log('Sending sms failed with error', e);
+                                  }
+                                })();
+                              });
+                            });
+                          } catch(e) {
+                            console.log("Error when validating recaptcha token: " + e)
+                          }
+                        disabled: !expression "!form.field.handoffMobile.isFilled || !form.field.handoffMobile.isValid || page.storage.get('numberOfSmsTries{%- attributes.uri %}') <= 1"
+                        text: !t "pages.{%- attributes.uri %}.handoff.sendSmsButton"
+                        repeatText: !t "pages.{%- attributes.uri %}.handoff.sendSmsAgainButton"
+                  - !component as: div
+                    className: col
+                    items:
+                      - !component as: div
+                        className: or
+                        items: !t "pages.{%- attributes.uri %}.handoff.or"
+              - !component as: div
+                className: {%- globals?.general.enableSmsHandoff ? 'col' : 'col col--centered' %}
+                items:
+                  - !component as: Heading
+                    kind: "h2"
+                    centered: {%- !globals?.general.enableSmsHandoff %}
+                    items: !t "pages.{%- attributes.uri %}.handoff.scanQRCode"
+                  - !component as: div
+                    className: "qrWrapper"
+                    items:
+                      - !component as: QRCode
+                        size: 200
+                        padding: 0
+                        text: !expression "window.location.protocol + '//' + window.location.host + window.location.pathname + '?uuid=' + flow.execution.uuid + '&token=' + flow.execution.token"
+          - !component as: div
+            className: row
+            items:
+              - !component as: VisibilityWrapper
+                visible: {%- !attributes?.manualUploadDisabled %}
+                items:
+                  - !component as: div
+                    className: col
+                    items:
+                      - !component as: a
+                        className: {%- globals?.general.enableSmsHandoff ? '' : 'text--centered' %}
+                        onClick: !function "form.addTags(['handoffBypass']);"
+                        items: !t "pages.{%- attributes.uri %}.handoff.dontOwnSmartphone"
+

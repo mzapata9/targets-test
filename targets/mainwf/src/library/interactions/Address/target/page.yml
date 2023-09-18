@@ -1,0 +1,245 @@
+components:
+  layoutWithSidebar: !include ../layouts/with-sidebar.yml
+  GenericField: !include ../components/generic-field.yml
+analytics:
+  form:
+    initialized:
+      eventName: "Opened"
+      data:
+        field: "Form"
+  page:
+    enter:
+      eventName: "Viewed"
+      data:
+        field: "Page"
+    leave:
+      eventName: "Completed"
+      data:
+        field: "Page"
+  fields:
+    location:
+      focus:
+        eventName: "Clicked"
+        data:
+          field: "Address"
+      blur:
+        eventName: "Input"
+        data:
+          field: "Address"
+schema: !expression |
+  utils.generateSchema({
+    fields: [
+      {name: 'location', required: false},
+      {name: 'address', type: 'text', required: true, minLength: 1},
+      {name: 'state', type: 'text', required: true, minLength: 1},
+      {name: 'city', type: 'text', required: true, minLength: 1},
+      {name: 'postalCode', type: 'text', required: true, minLength: 1},
+    ],
+  });
+styles:
+  - !include ../styles/{%- attributes.uri %}-{%- token %}.less
+items:
+  - !ref components: layoutWithSidebar
+    items:
+      # title and heading
+      {% if(attributes?.name) { %}
+      - !component as: Heading
+        items: !t pages.{%- attributes.uri %}.title
+      {% } %}
+
+      {% if(attributes?.description) { %}
+      - !component as: VisibilityWrapper
+        visible:
+          !expression eval: "!form.hasTags(['manualAddress'])"
+        items:
+          - !component as: Paragraph
+            items: !t pages.{%- attributes.uri %}.description
+      {% } %}
+
+      {% if(attributes?.descriptionForManual) { %}
+      - !component as: VisibilityWrapper
+        visible:
+          !expression eval: "form.hasTags(['manualAddress'])"
+        items:
+          - !component as: Paragraph
+            items: !t pages.{%- attributes.uri %}.descriptionForManual
+      {% } %}
+
+      - !component as: div
+        className: address-group
+        items:
+          # Button for Google Maps API searching
+          - !component as: VisibilityWrapper
+            visible:
+              !expression eval: "form.hasTags(['manualAddress'])"
+            items:
+              # search for address
+              - !component as: div
+                className: address-group
+                id: address-search-field
+                items:
+                  - !component as: a
+                    id: search-address-action
+                    className: left-link-button
+                    onMouseDown: !function |
+                      form.removeTags(['manualAddress'])
+
+                      form.changeValue('location', null)
+                      form.changeValue('address', null);
+                      form.changeValue('postalCode', null);
+                      form.changeValue('city', null);
+                      form.changeValue('state', null);
+                      form.changeValue('addressCountry', null);
+                    items:
+                      !t text: pages.{%- attributes.uri %}.enterAddressAction
+
+          # Google Maps API searching
+          - !ref components: GenericField
+            field:
+              visibleExpression: "!form.hasTags(['manualAddress'])"
+              type: 'address'
+              name: location
+              returnType: 'location'
+              showMap: {%- attributes.showMapOnSearch %}
+            notFoundRow:
+              - !component as: a
+                className: link-button
+                onMouseDown: !function "form.addTags(['manualAddress'])"
+                items: !t pages.{%- attributes.uri %}.notFoundAddress
+            extraRow:
+              - !component as: a
+                className: link-button
+                onMouseDown: !function "form.addTags(['manualAddress'])"
+                items: !t pages.{%- attributes.uri %}.enterAddressManually
+            uri: {%- attributes.uri %}
+
+          - !component as: Trigger
+            value: !expression "form.data.location.formattedAddress"
+            change: !function |
+              const data = form?.data?.location;
+              if (data) {
+                form.changeValue('address', (/^([\d]*)\s/.test(data.formattedAddress) ? [data.streetNumber, data.street] : [data.street, data.streetNumber]).filter(Boolean).join(' '));
+                form.changeValue('postalCode', data.postalCode);
+                form.changeValue('city', data.locality ? data.locality : (data.postalTown ? data.postalTown : (data.area2 ? data.area2 : data.area1)));
+                form.changeValue('state', data.area1);
+                form.changeValue('addressCountry', data.countryCode);
+                analytics.event('Found', { field: 'Address' });
+
+                // Validation for 2-letter State Code when US or CA
+                if({%- attributes.twoDigitsStateCode %} && (data.countryCode == "US" || data.countryCode == "CA") ) {
+                  form.changeValue('state', data.area1Code);
+                }
+              }
+
+          # New List with the address information
+          - !component as: VisibilityWrapper
+            visible:
+              !expression eval: "!form.hasTags(['manualAddress']) && form.data.location.formattedAddress"
+            items:
+              - !component as: ul
+                id: address-list
+                items:
+                  - !component as: li
+                    items:
+                      !t text: '{ addressLine }'
+                      addressLine: !expression |
+                        (/^([\d]*)\s/.test(form?.data?.location.formattedAddress) ? 
+                        [form?.data?.location.streetNumber, form?.data?.location.street] : 
+                        [form?.data?.location.street, form?.data?.location.streetNumber]).filter(Boolean).join(' ')
+
+                  - !component as: li
+                    items:
+                      !t text: '{ postalCode }'
+                      postalCode: !expression |
+                        form?.data?.location.postalCode ? form?.data?.location.postalCode : ''
+
+                  - !component as: li
+                    items:
+                      !t text: '{ city }'
+                      city: !expression |
+                        form?.data?.location.locality ? form?.data?.location.locality : 
+                        (form?.data?.location.postalTown ? form?.data?.location.postalTown : 
+                        (form?.data?.location.area2 ? form?.data?.location.area2 : form?.data?.location.area1))
+
+                  - !component as: li
+                    items:
+                      !t text: '{state}'
+                      state: !expression |
+                        form?.data?.location.area1 ? form?.data?.location.area1 : ''
+
+                  - !component as: li
+                    items:
+                      !t text: '{addressCountry}'
+                      addressCountry: !expression |
+                        form?.data?.location.countryCode ? form?.data?.location.countryCode : ''
+                        
+          # Fields for Manual Address
+          - !ref components: GenericField
+            field:
+              type: text
+              name: address
+              visibleExpression: "form.hasTags(['manualAddress'])"
+            uri: {%- attributes.uri %}
+          - !ref components: GenericField
+            field:
+              type: text
+              name: address2
+              visibleExpression: "form.hasTags(['manualAddress'])"
+            uri: {%- attributes.uri %}
+          - !ref components: GenericField
+            field:
+              type: text
+              name: postalCode
+              visibleExpression: "form.hasTags(['manualAddress'])"
+            uri: {%- attributes.uri %}
+          - !ref components: GenericField
+            field:
+              type: text
+              name: city
+              visibleExpression: "form.hasTags(['manualAddress'])"
+            uri: {%- attributes.uri %}
+          - !ref components: GenericField
+            field:
+              type: text
+              name: state
+              visibleExpression: "form.hasTags(['manualAddress'])"
+            uri: {%- attributes.uri %}
+          - !ref components: GenericField
+            field:
+              type: select
+              name: addressCountry
+              visibleExpression: "form.hasTags(['manualAddress'])"
+              searchable: true
+              options: {%- JSON.stringify( Object.keys(constants.COUNTRIES).filter((countryCode) => ((attributes.whitelistCountries?.length) ? (attributes.whitelistCountries?.indexOf(countryCode) > -1) : true) && ((attributes.blacklistCountries?.length) ? (attributes.blacklistCountries?.indexOf(countryCode) === -1) : true)).reduce((obj, countryCode) => ({ ...obj, [countryCode]: constants.COUNTRIES[countryCode] }), {}) ) %}
+            uri: {%- attributes.uri %}
+      
+      # Manual Address Button
+      - !component as: VisibilityWrapper
+        visible:
+          !expression eval: "!form.hasTags(['manualAddress'])"
+        items:
+          - !component as: div
+            id: manual-address-search-field
+            items:
+              - !component as: a
+                className: left-link-button
+                id: manual-address-action
+                onMouseDown: !function |
+                  form.addTags(['manualAddress'])
+                items:
+                  # Tried to validate with ternary operator but had text issues with translations
+                  - !component as: VisibilityWrapper
+                    visible:
+                      !expression eval: 'form.field.city.isFilled'
+                    items: !t pages.{%- attributes.uri %}.editAutoAddress
+
+                  - !component as: VisibilityWrapper
+                    visible:
+                      !expression eval: '!form.field.city.isFilled'
+                    items: !t pages.{%- attributes.uri %}.enterAddressManuallyAction
+                
+      - !component as: SubmitButton
+        actionName: flowSubmit
+        disabled:
+          !expression eval: '!form.valid'
+        text: !t "common.continue"
