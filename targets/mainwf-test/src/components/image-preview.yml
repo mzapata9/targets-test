@@ -1,0 +1,145 @@
+styles:
+  - !include ./image-preview.less
+  - !include ./alert.less
+!component as: div
+className: imagePreviewWrapper
+items:
+  - !component as: div
+    className: leftPanel
+    items:
+      # badge
+      - !component as: div
+        className: badge
+        <% if (typeof side !== 'undefined') { %>
+        items: !t <%- side %>
+        <% } else { %>
+        items: !t <%- name %>
+        <% } %>
+      # check
+      - !component as: VisibilityWrapper
+        visible: !expression "device.isMobile"
+        items:
+          - !component as: VisibilityWrapper
+            visible:
+              !expression eval: "!!uuid"
+              uuid: !property uuid
+            items:
+              - !component as: div
+                className:
+                  !expression eval: "'check ' + status"
+                  status: !property status
+                items:
+                  - !component as: div
+                    className: icon okIcon
+                    items:
+                      - !component as: SVGImage
+                        url: !expression globals.icons.empty-ok
+                  - !component as: div
+                    className: icon failIcon
+                    items:
+                      - !component as: SVGImage
+                        url: !expression globals.icons.fail
+                  - !component as: div
+                    className: icon analyzingIcon
+                    items:
+                      - !component as: SVGImage
+                        url: !expression globals.icons.analyzing
+                  - !expression eval: "status === 'ok' ? statusOk : (status === 'pending' ? statusPending : (status === 'fail' ? statusFailed : ''))"
+                    status: !property status
+                    statusOk: !t "pages.<%- uri %>.statusOk"
+                    statusPending: !t "pages.<%- uri %>.statusPending"
+                    statusFailed: !t "pages.<%- uri %>.statusFailed"
+      - !component as: div
+  # image
+  - !component as: VisibilityWrapper
+    visible: !expression "device.isMobile"
+    items:
+      - !component as: div
+        className: imageWrapper
+        items:
+          # placeholder
+          - !component as: VisibilityWrapper
+            visible:
+              !expression eval: "!uuid"
+              uuid: !property uuid
+            items: !t "handoff.waitingText"
+          # if we have uuid
+          - !component as: VisibilityWrapper
+            visible:
+              !expression eval: "!!uuid"
+              uuid: !property uuid
+            items:
+              - !component as: div
+                className: "CM-fileUpload__image CM-image"
+                items:
+                  - !component as: Image
+                    uuid: !property uuid
+  # alerts
+  - !component as: VisibilityWrapper
+    visible:
+      !expression eval: "status === 'ok' && device.isDesktop"
+      status: !property status
+    items:
+      - !component as: div
+        className: CM-alert success
+        items:
+          - !component as: div
+            className: alert-divider
+          - !component as: div
+            className: alert-icon
+            items:
+              - !component as: SVGImage
+                url: !expression globals.icons.checkCircle
+          - !component as: span
+            items: !t "pages.<%- uri %>.alertOk"
+  - !component as: VisibilityWrapper
+    visible:
+      !expression eval: "status === 'pending' && device.isDesktop"
+      status: !property status
+    items:
+      - !component as: div
+        className: CM-alert info
+        items:
+          - !component as: div
+            className: alert-divider
+          - !component as: div
+            className: alert-icon
+            items:
+              - !component as: SVGImage
+                url: !expression globals.icons.infoCircle
+          - !component as: span
+            items: !t "pages.<%- uri %>.alertPending"
+  - !component as: VisibilityWrapper
+    visible:
+      !expression eval: "status === 'fail' && device.isDesktop"
+      status: !property status
+    items:
+      - !component as: div
+        className: CM-alert error
+        items:
+          - !component as: div
+            className: alert-divider
+          - !component as: div
+            className: alert-icon
+            items:
+              - !component as: SVGImage
+                url: !expression globals.icons.failCircle
+          - !component as: span
+            items: !t "pages.<%- uri %>.alertFail"
+  - !component as: VisibilityWrapper
+    visible:
+      !expression eval: "status === 'waiting' && device.isDesktop"
+      status: !property status
+    items:
+      - !component as: div
+        className: CM-alert info
+        items:
+          - !component as: div
+            className: alert-divider
+          - !component as: div
+            className: alert-icon
+            items:
+              - !component as: SVGImage
+                url: !expression globals.icons.infoCircle
+          - !component as: span
+            items: !t "pages.<%- uri %>.alertWaiting"
