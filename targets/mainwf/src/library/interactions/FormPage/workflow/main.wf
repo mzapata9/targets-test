@@ -1,0 +1,38 @@
+{% for(const field of outputs) { %}{% if (field?.ednaField) { %}
+// mapping for "{%- field?.name %}" (type: {%- field?.ednaType %}){% if (field?.ednaType === 'basic' && field?.ednaBasicName) { %}
+identitymindMapping['{%- field?.ednaBasicName %}'] << [
+  'application': '{%- field.name %}',
+]
+{% } %}{% if (field?.ednaType === 'custom' && field?.ednaCustomName &&  !field?.toggleGroupName) { %}
+identitymindMapping['{%- field?.ednaCustomName %}'] << [
+  'application': '{%- field.name %}',
+]
+{% } %}{% if (field?.ednaType === 'custom' && field?.ednaCustomName  &&  field?.toggleGroupName  &&  field?.groupName  ) { %}
+    identitymindMapping['{%- field?.ednaCustomName %}'] << [
+    'application': '{%- field?.groupName %}',
+]
+{% } %}{% if (field?.ednaType === 'memo') { %}
+identitymindMemos << (identitymindMemos as List)  + [
+  'application': '{%- field.name %}',
+]
+{% } %}{% } %}{% if (field?.webhookField && field?.webhookFieldName) { %}
+// webhook mapping for "{%- field?.name %}"
+webhookMapping['{%- field?.webhookFieldName %}'] << [
+  'application': '{%- field.name %}',
+]{% } %}{% if (field?.webhookField &&  field?.toggleGroupName  &&  field?.groupName) { %}
+webhookMapping['{%- field?.groupName %}'] << [
+  'application': '{%-  field?.groupName %}',
+]{% } %}{% } %}
+
+visitedTokens << (visitedTokens as List) + '{%- token %}'
+route('{%- token %}') {
+  uri '/{%- attributes.uri %}'
+  //validate {
+  //  {%for(const field of outputs){ %}
+  //    {%=field.name%}{%}%}
+  //}
+  namespace application
+  export country: application.country, startedOnDesktop: startedOnDesktop, visitedTokens: visitedTokens
+  {% if (isTerminal) { %}terminal(){% } %}
+}
+{%- outputPath() %}

@@ -1,0 +1,54 @@
+.page-upload-document-verification {
+  .row {
+    display: flex;
+    margin-bottom: 30px;
+  }
+
+  .documentIcon {
+    margin-top: 10px;
+  }
+
+  .switchDocument {
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 35px;
+    justify-content: center;
+
+    &-name {
+      font-size: 15px;
+    }
+  }
+}
+
+.switchDocumentConfirm {
+  .CM-modal__wrapper {
+    max-width: 550px;
+  }
+
+  .CM-paragraph {
+    font-size: 16px;
+    margin-bottom: 50px;
+  }
+
+  .center {
+    padding: 30px 0 10px;
+    text-align: center;
+  }
+}
+
+.qrWrapper {
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+  /* background for other than white modals, and padding/sizes is for center QR code, which is not aligned form QR component */
+  background-color: var(--base-modal-background);
+}
+
+.qrWrapper .CM-qrCode {
+  padding: 5px 0 0 5px !important;
+  background-color: #fff;
+  height: 205px;
+}
