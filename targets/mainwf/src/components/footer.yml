@@ -1,0 +1,40 @@
+components:
+  tacAgreementModal: !include ./tac-agreement.yml
+  gdprAgreementModal: !include ./gdpr-agreement.yml
+styles:
+  - !include ./footer.less
+!component as: div
+className: "CM-footer <%-typeof className !== 'undefined' ? className : ''%>"
+items:
+  - !component as: div
+    className: "CM-footer__content"
+    items:
+      - !component as: div
+        className: "CM-footer__left"
+        !condition omit: globals?.general?.acuantLogoDisabled
+        items:
+          - !component as: div
+            className: "CM-footer__powered-by"
+            items: "Powered by"
+          - !component as: div
+            className: "CM-footer__logo"
+      - !component as: div
+        className: "CM-footer__right"
+      - !component as: div
+        className: CM-footer__reset-button
+        !condition include: globals?.general?.enableResetButton
+        items:
+          - !component as: VisibilityWrapper
+            visible: !expression "(flow.export.visitedTokens.length > 1) && !window.location.href.includes('handoffid')"
+            items:
+              - !component as: a
+                items: !t "common.footer.resetButton"
+                onClick: !function |
+                    const cookieName = 'last-flow'
+                    const pathname = window.location.pathname
+                    // clear cookie
+                    document.cookie = `${cookieName}=; Path=${pathname}; Expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+                    flow.reload()
+          
+  - !ref components: tacAgreementModal
+  - !ref components: gdprAgreementModal
