@@ -159,14 +159,14 @@ legal:
     Debe revisar los términos y políticas aplicables, incluidas las prácticas de privacidad y recopilación de datos, de cualquier sitio web al que navegue desde el Sitio o en relación con cualquier aplicación que use o instale desde el Sitio. Cualquier compra que realice a través de Third
 pages:
   personal-details:
-    personalDetailsFirstName1:
-      label: First Name #generated
     personalDetailsLastName2:
       label: Last Name #generated
     personalDetailsDateOfBirth3:
       label: Date of Birth #generated
     title: Información Personal #generated
     description: Para comenzar, por favor proporciona tu información personal #generated
+    personalDetailsFirstName:
+      label: First Name #generated
   contact-details:
     contactDetailsEmail1:
       label: Email #generated

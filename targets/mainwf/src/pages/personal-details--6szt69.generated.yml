@@ -21,15 +21,15 @@ analytics:
 
   fields:
 
-    personalDetailsFirstName1:
+    personalDetailsFirstName:
       focus:
         eventName: "Clicked"
         data:
-          field: !expression "utils.getAnalyticsFieldName('personalDetailsFirstName1')"
+          field: !expression "utils.getAnalyticsFieldName('personalDetailsFirstName')"
       blur:
         eventName: "Input"
         data:
-          field: !expression "utils.getAnalyticsFieldName('personalDetailsFirstName1')"
+          field: !expression "utils.getAnalyticsFieldName('personalDetailsFirstName')"
 
     personalDetailsLastName2:
       focus:
@@ -53,14 +53,14 @@ analytics:
 
 schema: !expression |
   utils.generateSchema({
-    fields: [{"type":"text","name":"personalDetailsFirstName1","label":"First Name","required":true,"blockWhenPrefilled":true,"ednaField":true,"ednaType":"basic","ednaBasicName":"bfn","validation":{"template":"name","pattern":"^[^0-9_!¡?÷?¿/\\\\+=@#$%ˆ&*(){}|~<>;:[\\]\\- ,]{2,}$"}},{"type":"text","name":"personalDetailsLastName2","label":"Last Name","required":true,"blockWhenPrefilled":true,"ednaField":true,"ednaType":"basic","ednaBasicName":"bln","validation":{"template":"name","pattern":"^[^0-9_!¡?÷?¿/\\\\+=@#$%ˆ&*(){}|~<>;:[\\]\\- ,]{2,}$"}},{"type":"date","name":"personalDetailsDateOfBirth3","label":"Date of Birth","required":true,"ednaField":true,"ednaType":"basic","ednaBasicName":"dob","limitByMinAge":true,"minAge":18}],
+    fields: [{"type":"text","name":"personalDetailsFirstName","label":"First Name","required":false,"blockWhenPrefilled":true,"ednaField":true,"ednaType":"basic","ednaBasicName":"bfn","validation":{"template":"name","pattern":"^[^0-9_!Â¡?Ã·?Â¿/\\\\+=@#$%Ë†&*(){}|~<>;:[\\]\\- ,]{2,}$"}},{"type":"text","name":"personalDetailsLastName2","label":"Last Name","required":true,"blockWhenPrefilled":true,"ednaField":true,"ednaType":"basic","ednaBasicName":"bln","validation":{"template":"name","pattern":"^[^0-9_!¡?÷?¿/\\\\+=@#$%ˆ&*(){}|~<>;:[\\]\\- ,]{2,}$"}},{"type":"date","name":"personalDetailsDateOfBirth3","label":"Date of Birth","required":true,"ednaField":true,"ednaType":"basic","ednaBasicName":"dob","limitByMinAge":true,"minAge":18}],
     tacAgreement:  Boolean(globals?.legal?.tacAgreementEnabled),
     gdprAgreement: utils.getGdprAgreementVisibility()
   });
 defaults:
 
-  personalDetailsFirstName1: !expression |
-    utils.getFieldUrlData( {field: {"type":"text","name":"personalDetailsFirstName1","label":"First Name","required":true,"blockWhenPrefilled":true,"ednaField":true,"ednaType":"basic","ednaBasicName":"bfn","validation":{"template":"name","pattern":"^[^0-9_!¡?÷?¿/\\\\+=@#$%ˆ&*(){}|~<>;:[\\]\\- ,]{2,}$"}} })
+  personalDetailsFirstName: !expression |
+    utils.getFieldUrlData( {field: {"type":"text","name":"personalDetailsFirstName","label":"First Name","required":false,"blockWhenPrefilled":true,"ednaField":true,"ednaType":"basic","ednaBasicName":"bfn","validation":{"template":"name","pattern":"^[^0-9_!Â¡?Ã·?Â¿/\\\\+=@#$%Ë†&*(){}|~<>;:[\\]\\- ,]{2,}$"}} })
 
   personalDetailsLastName2: !expression |
     utils.getFieldUrlData( {field: {"type":"text","name":"personalDetailsLastName2","label":"Last Name","required":true,"blockWhenPrefilled":true,"ednaField":true,"ednaType":"basic","ednaBasicName":"bln","validation":{"template":"name","pattern":"^[^0-9_!¡?÷?¿/\\\\+=@#$%ˆ&*(){}|~<>;:[\\]\\- ,]{2,}$"}} })
@@ -83,9 +83,9 @@ items:
         field:
           {
             "type": "text",
-            "name": "personalDetailsFirstName1",
+            "name": "personalDetailsFirstName",
             "label": "First Name",
-            "required": true,
+            "required": false,
             "blockWhenPrefilled": true,
             "ednaField": true,
             "ednaType": "basic",
@@ -93,7 +93,7 @@ items:
             "validation":
               {
                 "template": "name",
-                "pattern": "^[^0-9_!¡?÷?¿/\\\\+=@#$%ˆ&*(){}|~<>;:[\\]\\- ,]{2,}$"
+                "pattern": "^[^0-9_!Â¡?Ã·?Â¿/\\\\+=@#$%Ë†&*(){}|~<>;:[\\]\\- ,]{2,}$"
               }
           }
         uri: personal-details

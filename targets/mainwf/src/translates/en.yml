@@ -167,12 +167,12 @@ pages:
   personal-details:
     title: Personal Details #generated
     description: To get started, please provide some basic information about yourself. #generated
-    personalDetailsFirstName1:
-      label: First Name #generated
     personalDetailsLastName2:
       label: Last Name #generated
     personalDetailsDateOfBirth3:
       label: Date of Birth #generated
+    personalDetailsFirstName:
+      label: First Name #generated
   contact-details:
     title: Contact Details #generated
     description: Please provide some additional information about yourself. #generated

@@ -1,4 +1,4 @@
-// Zenoo DSL file generated at 2023-09-18T23:36:58.188Z
+// Zenoo DSL file generated at 2023-09-19T00:04:59.062Z
 
 
 // preinit
@@ -139,9 +139,9 @@ path("node--6szt69") {
     // --- begin of "PersonalDetailsInteraction" main code ---
     
     
-    // mapping for "personalDetailsFirstName1" (type: basic)
+    // mapping for "personalDetailsFirstName" (type: basic)
     identitymindMapping['bfn'] << [
-      'application': 'personalDetailsFirstName1',
+      'application': 'personalDetailsFirstName',
     ]
     
     // mapping for "personalDetailsLastName2" (type: basic)
@@ -160,7 +160,7 @@ path("node--6szt69") {
       uri '/personal-details'
       //validate {
       //  
-      //    personalDetailsFirstName1
+      //    personalDetailsFirstName
       //    personalDetailsLastName2
       //    personalDetailsDateOfBirth3
       //}
