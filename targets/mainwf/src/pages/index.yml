@@ -1,4 +1,0 @@
-components:
-  loader: !include ../components/loader.yml
-items:
-  - !ref components: loader
