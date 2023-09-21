@@ -62,6 +62,7 @@ studioSettings:
   accountId: c4yFH2MQCxPx8APk
   domain: preview.acuantgo3-qa.com
   journeyId: mOPIFCwfP82wMFsVbZNJt-b4
+  archived: true
 pages:
   welcome: !include ./pages/welcome--z9b2ek.generated.yml
   personal-details: !include ./pages/personal-details--6szt69.generated.yml
