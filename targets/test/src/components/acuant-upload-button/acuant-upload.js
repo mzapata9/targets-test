@@ -1,0 +1,559 @@
+const SCRIPTS = {
+  SDK: 'AcuantJavascriptWebSdk.min.js',
+  DOCUMENT: 'AcuantCamera.min.js',
+  LIVENESS: 'AcuantPassiveLiveness.min.js',
+  OPENCV: 'opencv.min.js',
+  HTML5_QRCODE: 'html5-qrcode.min.js',
+}
+
+const defaultOptions = {
+  disableImagePrevalidation: false,
+  scriptSrc: acuantConfig.path,
+  // messages
+  messages: {
+    blurry: 'Image appears blurry. Please retry.',
+    ensure: 'Ensure all texts are visible.',
+    hasGlare: 'Image has glare. Please retry.',
+    generalFail: "Image can't be cropped, try another image.",
+    lowQuality: 'Image quality is too low. Please retry',
+  },
+  textOptions: {
+    NONE: 'ALIGN',
+    SMALL_DOCUMENT: 'MOVE CLOSER',
+    BIG_DOCUMENT: 'TOO CLOSE',
+    GOOD_DOCUMENT: null,
+    CAPTURING: 'CAPTURING',
+    TAP_TO_CAPTURE: 'TAP TO CAPTURE',
+  },
+  faceTextOptions: {
+    FACE_NOT_FOUND: 'FACE NOT FOUND',
+    TOO_MANY_FACES: 'TOO MANY FACES',
+    FACE_ANGLE_TOO_LARGE: 'FACE ANGLE TOO LARGE',
+    PROBABILITY_TOO_SMALL: 'PROBABILITY TOO SMALL',
+    FACE_TOO_SMALL: 'FACE TOO SMALL',
+    FACE_CLOSE_TO_BORDER: 'TOO CLOSE TO THE FRAME',
+  },
+  // handlers
+  onAccepted: null,
+  onImageCaptured: null,
+  onImageCropFailed: null,
+  onImageCropped: null,
+  onRejected: null,
+}
+
+class Utils {
+  /**
+   * Convert Base64 to File
+   * @param dataUrl
+   * @param filename
+   */
+  static base64toFile(dataUrl, filename = 'image.jpg') {
+    const arr = dataUrl.split(',')
+    const mime = arr[0].match(/:(.*?);/)[1]
+    const bstr = atob(arr[1])
+
+    let n = bstr.length
+    const u8arr = new Uint8Array(n)
+
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n)
+    }
+
+    return new File([u8arr], filename, { type: mime })
+  }
+
+  /**
+   * Converts image data to URL
+   * @param imageData
+   */
+  static imageData2Url(imageData) {
+    const w = imageData.width
+    const h = imageData.height
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    ctx.putImageData(imageData, 0, 0) // synchronous
+    return canvas.toDataURL()
+  }
+
+  static filterObject(a) {
+    return Object.keys(a).reduce((acc, key) => {
+      if (a[key] !== undefined) {
+        acc[key] = a[key]
+      }
+      return acc
+    }, {})
+  }
+}
+
+return class AcuantUpload {
+  constructor(name, type, helpers, options, credentials) {
+    this.name = name
+    this.type = type
+    this.helpers = helpers
+
+    this.options = {
+      ...defaultOptions,
+      ...Utils.filterObject(options || {}),
+    }
+
+    // states
+    this.cameraOpened = false
+    this.livenessStatus = ''
+    this.initialized = !!window.onAcuantSdkLoaded || !!this.getAcuantJavascriptWebSdk()
+    this.errorInitializing = false
+    this.countRetryInitialized = 0
+    this.initializing = false
+    this.processing = false
+    this.processed = false
+    this.message = ''
+    this.credentials = credentials
+    this.currentRetries = 0
+    this.isManualSelfie = false
+    this.initialize()
+  }
+
+  /**
+   * Main methods to be called
+   */
+  openCamera = () => {
+    if (this.type === 'document') {
+      this.captureDocument()
+    } else {
+      this.captureSelfie()
+    }
+  }
+
+  /**
+   * Print result from image validation for glare, dpi and sharpness, non-prod environments only
+   */
+  printCaptureResult = response => {
+    try {
+      if (window.__configuration__.globals.ednaEnvironment == 'STG') {
+        console.log(`Glare: ${response.glare} DPI: ${response.dpi} Sharpness: ${response.sharpness}`)
+      }
+    } catch {
+      console.log('Error print capture result')
+    }
+  }
+
+  /**
+   * Internal SDK methods
+   */
+  captureDocument = () => {
+    this.setMessage('')
+
+    if (!this.getAcuantCameraUI()) {
+      return
+    }
+
+    if (this.getAcuantCamera().isCameraSupported) {
+      this.setCameraOpened(true)
+
+      this.getAcuantCameraUI().start(
+        {
+          onCaptured: this.onDocumentCaptured,
+          onCropped: this.onDocumentCropped,
+          onError: this.onDocumentError,
+        },
+        { text: this.options.textOptions },
+      )
+    } else {
+      this.getAcuantCamera().startManualCapture({
+        onCaptured: this.onDocumentCaptured,
+        onCropped: this.onDocumentCropped,
+        onError: this.onDocumentError,
+      })
+    }
+  }
+
+  async convertBase64ToImageFile(base64Data) {
+    const blob = await fetch(`data:image/jpg;base64,${base64Data}`).then(response => response.blob())
+    return new File([blob], 'selfie.jpg', { type: 'image/jpeg' })
+  }
+
+  callOnImageCropped(imageFile) {
+    if (typeof this.options.onImageCropped === 'function') {
+      this.options.onImageCropped({ imageFile })
+    }
+  }
+
+  callOnAccepted() {
+    if (typeof this.options.onAccepted === 'function') {
+      this.options.onAccepted()
+    }
+  }
+
+  async onSelfieCaptured(image) {
+    try {
+      this.setCameraOpened(false)
+      this.helpers.setVisited()
+      this.setProcessing(true)
+      const imageFile = await this.convertBase64ToImageFile(image)
+      this.callOnImageCropped(imageFile)
+      const event = { target: { files: [imageFile] } }
+
+      this.handleChange(event)
+      this.callOnAccepted()
+      this.setProcessing(false)
+      this.setProcessed(true)
+      this.setCameraOpened(false)
+    } catch (error) {
+      console.error('Error during selfie capture:', error)
+      // Handle or log the error as needed.
+    }
+  }
+
+  captureSelfie = () => {
+    this.setMessage('')
+    if (this.isManualSelfie) {
+      this.getAcuantPassiveLiveness().startManualCapture(image => {
+        this.onSelfieCaptured(image)
+      })
+    } else {
+      this.getAcuantPassiveLiveness().start(
+        {
+          onDetection: text => {
+            this.setLivenessStatus(text)
+          },
+          onOpened: () => {
+            this.setCameraOpened(true)
+          },
+          onClosed: () => {
+            this.helpers.setVisited()
+            this.setCameraOpened(false)
+            this.setLivenessStatus('')
+          },
+          onError: () => {
+            this.helpers.setVisited()
+            this.setCameraOpened(false)
+            this.setLivenessStatus('')
+            this.isManualSelfie = true
+          },
+          onPhotoTaken: () => {
+            this.setLivenessStatus('')
+          },
+          onCaptured: async image => {
+            this.onSelfieCaptured(image)
+          },
+        },
+        this.options.faceTextOptions,
+      )
+    }
+  }
+
+  onDocumentCaptured = async response => {
+    if (typeof this.options.onImageCaptured === 'function') {
+      this.options.onImageCaptured({ imageFile: Utils.imageData2Url(response.data) })
+    }
+
+    // Document captured
+    // This is not the final result of processed image
+    // Show a loading screen until onCropped is called
+    this.setProcessing(true)
+    this.helpers.setVisited()
+  }
+
+  onDocumentCropped = async response => {
+    if (!response) {
+      // Cropping error
+      // Restart capture
+      this.captureDocument()
+      this.setCameraOpened(false)
+      this.setProcessing(false)
+      this.setMessage(this.options.messages.generalFail)
+
+      if (typeof this.options.onRejected === 'function') {
+        this.options.onRejected()
+      }
+
+      if (typeof this.options.onImageCropFailed === 'function') {
+        this.options.onImageCropFailed({ error: this.options.messages.generalFail })
+      }
+
+      return
+    }
+
+    this.printCaptureResult(response)
+
+    if (!this.options.disableImagePrevalidation && this.currentRetries < this.options.documentUploadRetries) {
+      const hasCustomThresholds = this.options.documentCaptureQuality === 'CUSTOM'
+      const blurThreshold = 50
+      const glareThreshold = 50
+      let dpiThreshold = 400
+
+      if (this.options.documentCaptureQuality === 'DEFAULT') {
+        dpiThreshold = this.options.documentSelected === 'DL' ? 450 : 400
+      } else if (this.options.documentCaptureQuality === 'STRICT') {
+        dpiThreshold = this.options.documentSelected === 'DL' ? 500 : 450
+      }
+
+      const blurry = response.sharpness < (hasCustomThresholds ? this.options.documentCustomBlur : blurThreshold)
+      const hasGlare = response.glare < (hasCustomThresholds ? this.options.documentCustomGlare : glareThreshold)
+      const hasLowQuality = response.dpi < (hasCustomThresholds ? this.options.documentCustomDpi : dpiThreshold)
+
+      if (blurry) {
+        this.setMessage(this.options.messages.blurry)
+        this.setCameraOpened(false)
+        this.setProcessing(false)
+
+        if (typeof this.options.onRejected === 'function') {
+          this.options.onRejected()
+        }
+
+        if (typeof this.options.onImageCropFailed === 'function') {
+          this.options.onImageCropFailed({ error: this.options.messages.blurry })
+        }
+
+        this.currentRetries++
+
+        return
+      } else if (hasGlare) {
+        this.setMessage(this.options.messages.hasGlare)
+        this.setCameraOpened(false)
+        this.setProcessing(false)
+
+        if (typeof this.options.onRejected === 'function') {
+          this.options.onRejected()
+        }
+
+        if (typeof this.options.onImageCropFailed === 'function') {
+          this.options.onImageCropFailed({ error: this.options.messages.hasGlare })
+        }
+
+        this.currentRetries++
+
+        return
+      } else if (hasLowQuality) {
+        this.setMessage(this.options.messages.lowQuality)
+        this.setCameraOpened(false)
+        this.setProcessing(false)
+
+        if (typeof this.options.onRejected === 'function') {
+          this.options.onRejected()
+        }
+
+        if (typeof this.options.onImageCropFailed === 'function') {
+          this.options.onImageCropFailed({ error: this.options.messages.lowQuality })
+        }
+
+        this.currentRetries++
+
+        return
+      } else {
+        this.setMessage(this.options.messages.ensure)
+        this.currentRetries++
+      }
+    }
+
+    const imageFile = Utils.base64toFile(response.image.data)
+    const event = { target: { files: [imageFile] } }
+
+    if (typeof this.options.onImageCropped === 'function') {
+      this.options.onImageCropped({ imageFile })
+    }
+
+    this.handleChange(event)
+
+    this.setProcessed(true)
+
+    if (typeof this.options.onAccepted === 'function') {
+      this.options.onAccepted()
+    }
+    this.setCameraOpened(false)
+    this.setProcessing(false)
+  }
+
+  onDocumentError = (error, code) => {
+    this.getAcuantCamera().isCameraSupported = false
+
+    this.setCameraOpened(false)
+    this.setProcessing(false)
+
+    switch (code) {
+      case this.getAcuantJavascriptWebSdk().SEQUENCE_BREAK_CODE:
+        console.error('Camera failed due to iOS 15 bug. Start manual capture.')
+        break
+      case this.getAcuantJavascriptWebSdk().START_FAIL_CODE:
+        console.error('Live Camera failed to open. Start manual capture.')
+        break
+      default:
+        console.error('Unknown camera failure. Start manual capture.')
+        break
+    }
+  }
+
+  /**
+   * State setters for yaml component
+   * - its using page storage with prefixes to handle change from context
+   */
+  setCameraOpened(cameraOpened) {
+    this.cameraOpened = cameraOpened
+    this.helpers.storageSet(`instance-${this.name}-${this.type}.cameraOpened`, this.cameraOpened)
+  }
+
+  setLivenessStatus(livenessStatus) {
+    this.livenessStatus = livenessStatus
+    this.helpers.storageSet(`instance-${this.name}-${this.type}.livenessStatus`, this.livenessStatus)
+  }
+
+  setInitializing(initializing) {
+    this.initializing = initializing
+    this.helpers.storageSet(`instance-${this.name}-${this.type}.initializing`, this.initializing)
+  }
+
+  setInitialized(initialized) {
+    this.initialized = initialized
+    this.helpers.storageSet(`instance-${this.name}-${this.type}.initialized`, this.initialized)
+  }
+  setErrorInitializing(errorInitializing){
+    this.errorInitializing = errorInitializing
+    this.helpers.storageSet(`instance-${this.name}-${this.type}.errorInitializing`, this.errorInitializing )
+
+  }
+
+  setProcessing(processing) {
+    this.processing = processing
+    this.helpers.storageSet(`instance-${this.name}-${this.type}.processing`, this.processing)
+  }
+
+  setProcessed(processed) {
+    this.processed = processed
+    this.helpers.storageSet(`instance-${this.name}-${this.type}.processed`, this.processed)
+  }
+
+  setMessage(message) {
+    this.message = message
+    this.helpers.storageSet(`instance-${this.name}-${this.type}.message`, this.message)
+  }
+
+  loadScript(script, async = false) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script')
+
+      s.src = `${this.options.scriptSrc}${script}`
+      s.async = async
+      s.onload = resolve
+      s.onerror = reject
+      document.body.appendChild(s)
+    })
+  }
+
+  initialize = async () => {
+ 
+    if (this.initialized) {
+      if(window.errorInitializing && window.onAcuantSdkLoaded){
+
+        window.onAcuantSdkLoaded()
+      }
+      return
+    }
+
+    if (!window.onAcuantSdkLoaded) {
+      // const acuantConfig is set in interactions/Start/ejs/head.ejs/
+      window.onAcuantSdkLoaded = this.initializeSdk
+
+      try {
+        await Promise.all([
+          this.loadScript(SCRIPTS.SDK),
+          this.loadScript(SCRIPTS.DOCUMENT, true),
+          this.loadScript(SCRIPTS.LIVENESS, true),
+          this.loadScript(SCRIPTS.OPENCV, true),
+          this.loadScript(SCRIPTS.HTML5_QRCODE, true),
+        ])
+      } catch (error) {
+        console.error('Error loading Acuant Web SDK. Please make sure you put SDK lib files into `src/assets/lib` folder')
+      }
+
+      // Run SDK initialization manually since it's set to `DOMContentLoaded` event
+      // and we are loding SDK scripts dynamically
+      window.loadAcuantSdk()
+      
+      window.onAcuantSdkLoaded()
+      
+      
+     
+    
+    } else {
+      // Wait for initialization complete in case 2 inputs used on one page
+      setTimeout(() => {
+        this.setInitialized(true)
+        this.getAcuantJavascriptWebSdk().start()
+      }, 0)
+    }
+  }
+
+  initializeSdk = () => {
+    if (this.initialized || this.initializing) {
+      return
+    }
+
+    this.setInitializing(true)
+
+    this.getAcuantJavascriptWebSdk().setUnexpectedErrorCallback(error => console.error('Acuant SDK unexpected error:', error))
+
+  
+
+    this.getAcuantJavascriptWebSdk().initializeWithToken(this.credentials.token, this.credentials.url, {
+      onSuccess: () => {
+        this.getAcuantJavascriptWebSdk().start(() => {
+          this.setInitializing(false)
+          this.setInitialized(true)
+          this.setErrorInitializing(false)
+          delete window.errorInitializing
+       
+        })
+      },
+      onFail: () => {
+        this.setInitializing(false)
+        this.countRetryInitialized++
+        if(this.countRetryInitialized > 2){
+          this.setErrorInitializing(true)
+          window.errorInitializing = true
+          console.error('onFail: Acuant SDK initialize')
+        }else{  
+          console.log("Try to connect ",this.countRetryInitialized)
+          setTimeout(function () {
+            window.onAcuantSdkLoaded()
+          ,3000})
+        }
+      },
+    })
+  }
+
+  handleChange = async event => {
+    const filesList = Array.from(event.target.files)
+    const files = await Promise.all(filesList.map(file => this.helpers.getFileHolder(file)))
+    this.helpers.changeValue(this.name, files)
+    this.helpers.analyticsCustomEvent(`fields.${this.name}`, 'change')
+  }
+
+  getAcuantJavascriptWebSdk() {
+    if (!window.AcuantJavascriptWebSdk) {
+      window.AcuantJavascriptWebSdk = typeof AcuantJavascriptWebSdk !== 'undefined' ? AcuantJavascriptWebSdk : undefined
+    }
+    return window.AcuantJavascriptWebSdk
+  }
+
+  getAcuantCamera() {
+    if (!window.AcuantCamera) {
+      window.AcuantCamera = AcuantCamera
+    }
+    return window.AcuantCamera
+  }
+
+  getAcuantCameraUI() {
+    if (!window.AcuantCameraUI) {
+      window.AcuantCameraUI = AcuantCameraUI
+    }
+    return window.AcuantCameraUI
+  }
+
+  getAcuantPassiveLiveness() {
+    if (!window.AcuantPassiveLiveness) {
+      window.AcuantPassiveLiveness = AcuantPassiveLiveness
+    }
+    return window.AcuantPassiveLiveness
+  }
+}

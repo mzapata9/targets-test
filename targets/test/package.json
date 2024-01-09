@@ -1,0 +1,19 @@
+{
+  "name": "test",
+  "version": "1.0.81",
+  "description": "test Onboarding",
+  "scripts": {
+    "build": "hub-client build",
+    "development": "hub-client dev",
+    "start": "npm run development"
+  },
+  "author": "Zenoo",
+  "private": true,
+  "license": "PRIVATE",
+  "overrides": {
+    "console-feed": "git+https://github.com/samdenty/console-feed.git"
+  },
+  "devDependencies": {
+    "@zenoo/hub-client-application": "1.17.1"
+  }
+}
