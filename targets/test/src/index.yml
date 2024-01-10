@@ -52,7 +52,7 @@ translates:
   en: !include ./translates/en.yml
 favicon: "assets/favicon.png"
 studioSettings:
-  logo: /assets/logo-e9a9c5.tif
+  logo: /assets/logo-f3fb25.html
   name: test
   country: US
   group:
