@@ -158,45 +158,6 @@ legal:
 
     Debe revisar los términos y políticas aplicables, incluidas las prácticas de privacidad y recopilación de datos, de cualquier sitio web al que navegue desde el Sitio o en relación con cualquier aplicación que use o instale desde el Sitio. Cualquier compra que realice a través de Third
 pages:
-  personal-details:
-    personalDetailsFirstName1:
-      label: First Name #generated
-    personalDetailsLastName2:
-      label: Last Name #generated
-    personalDetailsDateOfBirth3:
-      label: Date of Birth #generated
-    title: Información Personal #generated
-    description: Para comenzar, por favor proporciona tu información personal #generated
-  contact-details:
-    contactDetailsEmail1:
-      label: Email #generated
-    contactDetailsMobile2:
-      label: Mobile #generated
-    title: Información de Contacto #generated
-    description: Por favor, proporciona tu información de contacto. #generated
-  address:
-    title: Dirección #generated
-    description: Por favor, ingresa tu dirección para continuar. #generated
-    descriptionForManual: Por favor, ingresa tu dirección manualmente #generated
-    enterAddressManuallyAction: Ingresa tu dirección manualmente #generated
-    enterAddressAction: Regresar a la búsqueda de dirección #generated
-    editAutoAddress: Editar dirección #generated
-    location:
-      label: Comienza por escribir tu dirección #generated
-    address:
-      label: Calle y número exterior #generated
-    address2:
-      label: Número interior #generated
-    postalCode:
-      label: Código Postal #generated
-    city:
-      label: Ciudad #generated
-    state:
-      label: Estado #generated
-    addressCountry:
-      label: País #generated
-    enterAddressManually: Ingresa tu dirección manualmente #generated
-    notFoundAddress: No la encontramos, escribe tu dirección manualmente #generated
   document-verification:
     documentType:
       country: País emisor #generated
@@ -273,8 +234,16 @@ pages:
         text: #generated
           Toma tu foto sin lentes y ni sombrero para que tu cara sea
           completamente visible.
+  upload-attachment:
+    title: Dirección de registro #generated
+    text: Por favor, sube un documento para validar tu dirección. #generated
+    file:
+      label: Comprobante de domicilio #generated
+      heading: Por favor, haz click en el icono de la nube para subir tu documento. #generated
+      uploadParagraph: Gracias, la velocidad de carga depende de tu conexión. Pronto terminamos. #generated
+      paragraph: "Tamaño max: 3 MB. Formatos aceptados: JPG, PNG o PDF." #generated
+      uploadAnother: Add another #generated
 steps:
-  yourPersonalInformation: Your Personal Information #generated
   verifyYourIdentity: Verify your Identity #generated
   submitYourApplication: Submit your Application #generated
 acuantsdk:

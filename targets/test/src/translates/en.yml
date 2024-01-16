@@ -164,45 +164,6 @@ legal:
 
     In order to resolve a complaint regarding the Site or to receive further information regarding use of the Site, please contact us at our website.
 pages:
-  personal-details:
-    title: Personal Details #generated
-    description: To get started, please provide some basic information about yourself. #generated
-    personalDetailsFirstName1:
-      label: First Name #generated
-    personalDetailsLastName2:
-      label: Last Name #generated
-    personalDetailsDateOfBirth3:
-      label: Date of Birth #generated
-  contact-details:
-    title: Contact Details #generated
-    description: Please provide some additional information about yourself. #generated
-    contactDetailsEmail1:
-      label: Email #generated
-    contactDetailsMobile2:
-      label: Mobile #generated
-  address:
-    title: Address #generated
-    description: Please type your address and select it from the list to continue. #generated
-    descriptionForManual: Please enter your address manually #generated
-    enterAddressManuallyAction: Enter address manually #generated
-    enterAddressAction: Return to address search #generated
-    editAutoAddress: Edit address #generated
-    location:
-      label: Start typing your street and number #generated
-    address:
-      label: Address line 1 #generated
-    address2:
-      label: Address line 2 #generated
-    postalCode:
-      label: Postcode #generated
-    city:
-      label: City #generated
-    state:
-      label: State #generated
-    addressCountry:
-      label: Country #generated
-    enterAddressManually: Enter address manually #generated
-    notFoundAddress: Not found, enter address manually #generated
   document-verification:
     documentType:
       country: Document Issuing Country #generated
@@ -283,8 +244,18 @@ pages:
           sure your face is fully visible.
   document:
     statusFailedConection: An error occurred. Please restart the process. #generated
+  upload-attachment:
+    title: Registration address #generated
+    text: Please, upload a document to validate your address #generated
+    file:
+      label: Address document #generated
+      heading: Please, click on the cloud icon to upload the document. #generated
+      uploadParagraph: #generated
+        Thank you. Upload speeds vary depending on your connection. This
+        shouldn’t take much longer.
+      paragraph: "Maximum file size: 3 MB. Accepted formats: JPG, PNG or PDF." #generated
+      uploadAnother: Add another #generated
 steps:
-  yourPersonalInformation: Your Personal Information #generated
   verifyYourIdentity: Verify your Identity #generated
   submitYourApplication: Submit your Application #generated
 acuantsdk:

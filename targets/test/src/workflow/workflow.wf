@@ -1,4 +1,4 @@
-// Zenoo DSL file generated at 2024-01-16T23:48:33.218Z
+// Zenoo DSL file generated at 2024-01-16T23:54:11.630Z
 
 
 // preinit
@@ -118,6 +118,22 @@ dependencies {
     response
   }
 
+// path for node "0" [-orx5du]
+path("node--orx5du") {
+    // --- begin of "UploadAttachmentInteraction" main code ---
+    
+    visitedTokens << (visitedTokens as List) + '-orx5du'
+    route('-orx5du') {
+      uri '/upload-attachment'
+      namespace uploadAttachment
+      export country: application.country, startedOnDesktop: startedOnDesktop, visitedTokens: visitedTokens
+      
+    }
+    identitymindAttachments << (identitymindAttachments as List) + (uploadAttachment.document as List)
+    path("node-vhbx4a") // path to node "n7gpi0"
+    // --- end of "UploadAttachmentInteraction" main code ---
+}
+
 // path for node "p7hpwr" [-z9b2ek]
 path("node--z9b2ek") {
     // --- begin of "WelcomeInteraction" main code ---
@@ -129,126 +145,9 @@ path("node--z9b2ek") {
       export startedOnDesktop: startedOnDesktop, visitedTokens: visitedTokens
       
     }
-    path("node--6szt69") // path to node "-n6spxy"
+    path("node--orx5du") // path to node "0"
     
     // --- end of "WelcomeInteraction" main code ---
-}
-
-// path for node "-n6spxy" [-6szt69]
-path("node--6szt69") {
-    // --- begin of "PersonalDetailsInteraction" main code ---
-    
-    
-    // mapping for "personalDetailsFirstName1" (type: basic)
-    identitymindMapping['bfn'] << [
-      'application': 'personalDetailsFirstName1',
-    ]
-    
-    // mapping for "personalDetailsLastName2" (type: basic)
-    identitymindMapping['bln'] << [
-      'application': 'personalDetailsLastName2',
-    ]
-    
-    // mapping for "personalDetailsDateOfBirth3" (type: basic)
-    identitymindMapping['dob'] << [
-      'application': 'personalDetailsDateOfBirth3',
-    ]
-    
-    
-    visitedTokens << (visitedTokens as List) + '-6szt69'
-    route('-6szt69') {
-      uri '/personal-details'
-      //validate {
-      //  
-      //    personalDetailsFirstName1
-      //    personalDetailsLastName2
-      //    personalDetailsDateOfBirth3
-      //}
-      namespace application
-      export country: application.country, startedOnDesktop: startedOnDesktop, visitedTokens: visitedTokens
-      
-    }
-    path("node--bfwyrg") // path to node "-qte4st"
-    
-    // --- end of "PersonalDetailsInteraction" main code ---
-}
-
-// path for node "-qte4st" [-bfwyrg]
-path("node--bfwyrg") {
-    // --- begin of "ContactDetailsInteraction" main code ---
-    
-    
-    // mapping for "contactDetailsEmail1" (type: basic)
-    identitymindMapping['tea'] << [
-      'application': 'contactDetailsEmail1',
-    ]
-    
-    // mapping for "contactDetailsMobile2" (type: basic)
-    identitymindMapping['phn'] << [
-      'application': 'contactDetailsMobile2',
-    ]
-    
-    
-    visitedTokens << (visitedTokens as List) + '-bfwyrg'
-    route('-bfwyrg') {
-      uri '/contact-details'
-      //validate {
-      //  
-      //    contactDetailsEmail1
-      //    contactDetailsMobile2
-      //}
-      namespace application
-      export country: application.country, startedOnDesktop: startedOnDesktop, visitedTokens: visitedTokens
-      
-    }
-    path("node-xxl9s7") // path to node "p1vg4o"
-    
-    // --- end of "ContactDetailsInteraction" main code ---
-}
-
-// path for node "p1vg4o" [xxl9s7]
-path("node-xxl9s7") {
-    // --- begin of "AddressInteraction" main code ---
-    
-    if (true || [].findIndexOf({ it == application.country.toString() }) > -1) {
-    
-      identitymindMapping['bc'] << [
-        "application": "city",
-      ]
-      identitymindMapping['bs'] << [
-        "application": "state",
-      ]
-      identitymindMapping['bsn'] << [
-        "application": "address",
-      ]
-      identitymindMapping['bz'] << [
-        "application": "postalCode",
-      ]
-    
-      
-    
-      visitedTokens << (visitedTokens as List) + 'xxl9s7'
-      route('xxl9s7') {
-        uri '/address'
-        //validate {
-        //  
-        //}
-        namespace application
-        export country: application.country, startedOnDesktop: startedOnDesktop, visitedTokens: visitedTokens
-        
-      }
-    
-      if (application.addressCountry) {
-        application.country << application.addressCountry
-      }
-    
-    }
-    
-    
-    
-    path("node-vhbx4a") // path to node "n7gpi0"
-    
-    // --- end of "AddressInteraction" main code ---
 }
 
 // path for node "n7gpi0" [vhbx4a]

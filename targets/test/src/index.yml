@@ -64,9 +64,7 @@ studioSettings:
   journeyId: P_-DUmyOOF8FWu8CwEIEiRcM
 pages:
   welcome: !include ./pages/welcome--z9b2ek.generated.yml
-  personal-details: !include ./pages/personal-details--6szt69.generated.yml
-  contact-details: !include ./pages/contact-details--bfwyrg.generated.yml
-  address: !include ./pages/address-xxl9s7.generated.yml
+  upload-attachment: !include ./pages/upload-attachment--orx5du.generated.yml
   document-type-document-verification: !include ./pages/document-type-document-verification-vhbx4a.generated.yml
   upload-document-verification: !include ./pages/upload-document-verification-vhbx4a.generated.yml
   edna-processing: !include ./pages/edna-processing--qjzlx7.generated.yml
@@ -388,15 +386,9 @@ steps:
     - - token: -z9b2ek
         uri: welcome
         stepName: null
-      - token: -6szt69
-        uri: personal-details
-        stepName: yourPersonalInformation
-      - token: -bfwyrg
-        uri: contact-details
-        stepName: yourPersonalInformation
-      - token: xxl9s7
-        uri: address
-        stepName: yourPersonalInformation
+      - token: -orx5du
+        uri: upload-attachment
+        stepName: verifyYourIdentity
       - token: vhbx4a
         uri: document-type-document-verification
         stepName: verifyYourIdentity

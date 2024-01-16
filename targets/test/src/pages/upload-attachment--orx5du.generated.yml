@@ -1,0 +1,70 @@
+uri: upload-attachment
+token: -orx5du
+components:
+  layoutWithSidebar: !include ../layouts/with-sidebar.yml
+analytics:
+  form:
+    initialized:
+      eventName: "Opened"
+      data:
+        field: "Form"
+  page:
+    enter:
+      eventName: "Viewed"
+      data:
+        field: "Page"
+    leave:
+      eventName: "Completed"
+      data:
+        field: "Page"
+schema:
+  required:
+    - document
+  properties:
+    document:
+      type: array
+      minItems: 1
+      items:
+        properties:
+          size:
+            maximum: 3145728
+            errorMessage:
+              _: "Document size should not be more than 3mb"
+          file:
+            properties:
+              type:
+                enum:
+                  - 'image/jpeg'
+                  - 'image/png'
+                  - 'application/pdf'
+            errorMessage:
+              properties:
+                type: "Please upload document with supported format (JPG, PNG or PDF)"
+  errorMessage:
+    _: "Required field"
+items:
+  - !ref components: layoutWithSidebar
+    activeStep: 6
+    hideExtraLoader: true
+    title: !t "pages.upload-attachment.title"
+    items:
+      - !component as: Heading
+        items: !t "pages.upload-attachment.title"
+      - !component as: Paragraph
+        items: !t "pages.upload-attachment.text"
+      - !component as: FileUpload
+        allowDelete: true
+        allowManualRotation: false
+        name: document
+        label: !t "pages.upload-attachment.file.label"
+        useConfirmationModal: false
+        icon: "doc"
+        fixOrientation: false
+        heading: !t "pages.upload-attachment.file.heading"
+        uploadParagraph: !t "pages.upload-attachment.file.uploadParagraph"
+        paragraph: !t "pages.upload-attachment.file.paragraph"
+        uploadAnotherText: !t "pages.upload-attachment.file.uploadAnother"
+        multiple: true
+      - !component as: SubmitButton
+        actionName: flowSubmit
+        text: !t "common.continue"
